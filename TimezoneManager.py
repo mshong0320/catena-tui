@@ -1,3 +1,23 @@
+"""
+TimezoneManager Module
+
+This module contains the `TimezoneManager` class which is responsible for managing the system's timezone configuration.
+It allows users to view the current timezone, select a new timezone, and set it using system commands. It also provides
+options to reboot the system or return to the main menu.
+
+Key Features:
+- Displays the current system timezone.
+- Allows users to select a new timezone via `tzselect`.
+- Provides buttons for rebooting the system or returning to the main menu.
+- Supports both initial and post-setup modes.
+- Handles errors in the timezone selection and system reboot process.
+
+Dependencies:
+- `urwid`: For building the user interface.
+- `subprocess`: For executing system commands to check and set the timezone.
+- `logging`: For logging information and errors.
+"""
+
 import urwid
 import subprocess
 import logging
@@ -5,9 +25,35 @@ import typing
 from .loop import get_main_loop
 
 class TimezoneManager(urwid.WidgetWrap):
+	"""
+    A class that provides the functionality to manage and set the system's timezone.
+
+    Attributes:
+        signals (list): A list of signals the widget can emit. In this case, it supports the "close" signal.
+        current_timezone (str): The current system timezone.
+        current_timezone_show (urwid.Text): Widget displaying the current timezone.
+        current_timezone_padded (urwid.Padding): Padded widget to center the current timezone display.
+        select_timezone_button (urwid.Button): Button to allow the user to select a new timezone.
+        selectTimezoneWrapped (urwid.Padding): Wrapped and padded button for selecting the timezone.
+        reboot_button (urwid.Button): Button to trigger a system reboot.
+        back_button (urwid.Button): Button to return to the main menu.
+        backWrapped (urwid.Padding): Padded button for the back action.
+        rebootWrapped (urwid.Padding): Padded button for the reboot action.
+        initial_setup (bool): A flag to determine whether the wizard is in its initial setup state.
+
+    Methods:
+        __init__(initial_setup: bool): Initializes the TimezoneManager and sets up the UI layout.
+        get_current_timezone(): Retrieves the current system timezone using `timedatectl`.
+        create_layout(): Creates and configures the layout of the UI based on whether it's in initial setup mode.
+        select_timezone(button): Handles the selection of a new timezone and updates the system timezone.
+        reset_layout(): Updates the layout after setting a new timezone and displays relevant information.
+        reboot_system(button): Reboots the system using a system command.
+        exit_to_menu(button): Closes the current widget and returns to the main menu.
+    """
+
 	signals: typing.ClassVar[list[str]] = ["close"]
 
-	def __init__(self, initial_setup: bool = True) -> None:
+	def __init__(self, initial_setup: bool = False) -> None:
 		logging.debug('Initializing TimezoneManager')
 		self.current_timezone = self.get_current_timezone()
 		self.current_timezone_show = urwid.Text(f"Current Timezone: {self.current_timezone}")
@@ -23,6 +69,12 @@ class TimezoneManager(urwid.WidgetWrap):
 		logging.debug('TimezoneManager initialized')
 
 	def get_current_timezone(self):
+		"""
+        Retrieves the current system timezone using the `timedatectl` command.
+        Returns:
+            str: The current system timezone (e.g., "America/New_York"),
+            or an error message if unable to determine the timezone.
+        """
 		try:
 			result = subprocess.run(['timedatectl', 'show', '--property=Timezone'], capture_output=True, text=True, check=True)
 			timezone_name = result.stdout.strip().split('=')[-1]
@@ -31,7 +83,13 @@ class TimezoneManager(urwid.WidgetWrap):
 		return timezone_name
 
 	def create_layout(self):
-		if self.initial_setup:
+		"""
+        Creates the layout for the TimezoneManager based on whether it's in initial setup mode or not.
+        In initial setup mode, only the current timezone and selection button are shown. In non-initial setup mode,
+        the layout also includes the option to reboot and return to the main menu.
+        """
+
+		if self.initial_setup==False:
 			self.pile = urwid.Pile([
 							self.current_timezone_padded,
 							urwid.Divider(),
@@ -41,7 +99,7 @@ class TimezoneManager(urwid.WidgetWrap):
 							urwid.Divider(),
 							self.rebootWrapped
 						])
-			self.pile.contents[-1] = (urwid.Text(''), ('pack', None))  # Hide the Reboot button initially
+			self.pile.contents[-1] = (urwid.Text(''), ('pack', None))
 		else:
 			self.pile = urwid.Pile([
 							self.current_timezone_padded,
@@ -52,6 +110,11 @@ class TimezoneManager(urwid.WidgetWrap):
 		super().__init__(self.box)
 
 	def select_timezone(self, button):
+		"""
+        Allows the user to select a new timezone using `tzselect` and updates the system timezone.
+        This method halts the main loop, runs the `tzselect` command to select the timezone, and applies the
+        selected timezone using `timedatectl`. Afterward, the layout is updated to reflect the change.
+        """
 		try:
 			main_loop = get_main_loop()
 			main_loop.screen.stop()
@@ -68,16 +131,21 @@ class TimezoneManager(urwid.WidgetWrap):
 			self.reset_layout()
 
 	def reset_layout(self, *args):
+		"""
+        Resets the layout to reflect the updated timezone and provides feedback to the user.
+        Displays a success message with the current timezone and updates the layout. If it's not in initial
+        setup mode, the Reboot and Back buttons are shown; otherwise, the Next button is displayed.
+        """
 		self.pile.contents.clear()
 		self.current_timezone = self.get_current_timezone()
-		if self.initial_setup:
-			success_message = urwid.Text(f"Timezone is successfully set to {self.current_timezone}. Please reboot to apply the changes.")
+		if self.initial_setup == False:
+			success_message = urwid.Text(f"Timezone is set to {self.current_timezone}. Please reboot to apply changes.")
 		else:
-			success_message = urwid.Text(f"Timezone is successfully set to {self.current_timezone}. Please click Next button below to proceed.")
+			success_message = urwid.Text(f"Timezone is set to {self.current_timezone}. Please click Next button to proceed.")
 		success_message_padded = urwid.Padding(success_message, 'center', width=('relative', 50))
 		self.current_timezone_show.set_text(f"Current Timezone: {self.current_timezone}")
-		if self.initial_setup:
-			new_pile_content = [	
+		if self.initial_setup == False:
+			new_pile_content = [
 								urwid.Text(""),
 								self.current_timezone_padded,
 								urwid.Text(""),
@@ -91,7 +159,7 @@ class TimezoneManager(urwid.WidgetWrap):
 							]
 			self.pile.contents.extend([(widget, ('pack', None)) for widget in new_pile_content])
 		else:
-			new_pile_content = [	
+			new_pile_content = [
 								urwid.Text(""),
 								self.current_timezone_padded,
 								urwid.Text(""),
@@ -109,5 +177,9 @@ class TimezoneManager(urwid.WidgetWrap):
 			self.pile.contents.insert(1, (urwid.AttrMap(response_text, None), ('pack', None)))
 
 	def exit_to_menu(self, button):
+		"""
+        Exits the current wizard and returns to the main menu.
+        This method emits the "close" signal and resets the layout.
+        """
 		self._emit('close')
 		self.reset_layout()
