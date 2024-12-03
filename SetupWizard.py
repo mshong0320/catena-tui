@@ -35,7 +35,6 @@ Example usage:
     mainloop = urwid.MainLoop(setup_wizard)
     mainloop.run()
 """
-
 import urwid
 import logging
 import typing
@@ -46,12 +45,8 @@ from .TimezoneManager import TimezoneManager
 from .TimeManager import TimeManager
 from .NetworkSelector import NetworkSelector
 from .loop import get_main_loop
+logger = logging.getLogger(__name__)
 
-logging.basicConfig(
-    filename='setup_wizard.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
 class SetupWizard(urwid.WidgetWrap):
     """
@@ -74,13 +69,13 @@ class SetupWizard(urwid.WidgetWrap):
     signals: typing.ClassVar[list[str]] = ["close"]
 
     def __init__(self, initial_setup: bool = False):
-        logging.debug("Initializing SetupWizard")
+        logger.debug("Initializing SetupWizard")
         self.initial_setup = initial_setup
         self.steps = [
-            ("Set Hostname", HostnameManager(initial_setup=initial_setup)),
-            ("Set Timezone", TimezoneManager(initial_setup=initial_setup)),
-            ("Set Time", TimeManager(initial_setup=initial_setup)),
-            ("Configure Network", NetworkSelector(initial_setup=initial_setup))
+            ("Set Hostname", HostnameManager(setup_wizard=True)),
+            ("Set Timezone", TimezoneManager(setup_wizard=True)),
+            ("Set Time", TimeManager(setup_wizard=True)),
+            ("Configure Network", NetworkSelector(setup_wizard=True))
         ]
         self.current_step_index = 0
         self.next_button = urwid.Button("Next", self.next_step)
@@ -91,7 +86,7 @@ class SetupWizard(urwid.WidgetWrap):
         self._w = urwid.LineBox(urwid.Filler(self.pile), title="Setup Wizard")
         super().__init__(self._w)
         self.update_body()
-        logging.debug("Initialized SetupWizard with LineBox layout.")
+        logger.debug("Initialized SetupWizard with LineBox layout.")
 
     def update_body(self):
         """
@@ -101,7 +96,7 @@ class SetupWizard(urwid.WidgetWrap):
         """
         try:
             step_name, step_widget = self.steps[self.current_step_index]
-            logging.debug(f"Updating body with step: {step_name}")
+            logger.debug(f"Updating body with step: {step_name}")
             if isinstance(step_widget, NetworkSelector):
                 urwid.connect_signal(step_widget, "close", self.back)
                 self._w = PopUpFrame(step_widget)
@@ -114,8 +109,8 @@ class SetupWizard(urwid.WidgetWrap):
                     (self.next_button_wrapped, self.pile.options())
                 ])
         except ValueError as e:
-            logging.error(f"ValueError in update_body: {e}")
-            logging.debug(f"Steps: {self.steps}, Current step index: {self.current_step_index}")
+            logger.error(f"ValueError in update_body: {e}")
+            logger.debug(f"Steps: {self.steps}, Current step index: {self.current_step_index}")
 
     def next_step(self, button):
         """
@@ -125,7 +120,7 @@ class SetupWizard(urwid.WidgetWrap):
         """
         if self.current_step_index < len(self.steps) - 1:
             self.current_step_index += 1
-            logging.debug(f"Moving to next step index: {self.current_step_index}")
+            logger.debug(f"Moving to next step index: {self.current_step_index}")
             self.update_body()
 
     def back(self, button):
@@ -161,7 +156,7 @@ class SetupWizard(urwid.WidgetWrap):
                                 ])
         self._w = urwid.LineBox(urwid.Filler(self.pile), title="Setup Wizard Completion")
         self._invalidate()
-        logging.debug("Displayed setup completion screen.")
+        logger.debug("Displayed setup completion screen.")
 
     def reboot_system(self, button):
         """
@@ -182,4 +177,4 @@ class SetupWizard(urwid.WidgetWrap):
         self.current_step_index = 0
         self.update_body()
         self._emit('close')
-        logging.debug("Finishing setup wizard and returning to homescreen")
+        logger.debug("Finishing setup wizard and returning to homescreen")
