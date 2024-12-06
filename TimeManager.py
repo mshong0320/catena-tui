@@ -100,11 +100,49 @@ class TimeManager(urwid.WidgetWrap):
 		Updates the internal NTP state without applying changes.
 
 		Args:
-			checkbox: The checkbox triggering this action.
-			state (bool): The new state of the checkbox.
+		checkbox: The checkbox triggering this action.
+		state (bool): The new state of the checkbox.
 		"""
 		self.ntp_enabled = state
-		self.display_response(f"NTP status set to {'enabled' if state else 'disabled'} (Pending Submit).")
+		self.display_ntp_status_message(state)
+		self.update_layout_based_on_ntp(state)
+
+	def display_ntp_status_message(self, state: bool) -> None:
+		"""
+		Displays a status message for the NTP state.
+
+		Args:
+		state (bool): The new state of the NTP checkbox.
+		"""
+		message = f"NTP status set to {'enabled' if state else 'disabled'} (Pending Submit)."
+		self.display_response(message)
+
+	def update_layout_based_on_ntp(self, state: bool) -> None:
+		"""
+		Dynamically updates the layout based on the NTP state.
+
+		Args:
+		state (bool): The new state of the NTP checkbox.
+		"""
+		if state:
+			self.remove_time_input()
+		else:
+			self.add_time_input()
+
+	def add_time_input(self) -> None:
+		"""
+		Adds the time input field to the layout if not already present.
+		"""
+		if self.time_input_wrapped not in [widget for widget, _ in self.pile.contents]:
+			self.pile.contents.insert(1, (self.time_input_wrapped, ('pack', None)))
+
+	def remove_time_input(self) -> None:
+		"""
+		Removes the time input field from the layout if it is present.
+		"""
+		self.pile.contents = [
+			item for item in self.pile.contents if item[0] is not self.time_input_wrapped
+		]
 
 	def apply_ntp_status(self):
 		"""
@@ -215,7 +253,11 @@ class TimeManager(urwid.WidgetWrap):
 			urwid.Divider(),
 		])
 
-		self.pile.contents.insert(0, (self.time_input_wrapped, ('pack', None)))
+		# Add time input field only if NTP is disabled
+		if not self.ntp_enabled:
+			self.pile.contents.insert(0, (self.time_input_wrapped, ('pack', None)))
+
+		# Add the submit button
 		self.pile.contents.append((self.submit_button_wrapped, ('pack', None)))
 
 		# Additional elements only if initial_setup is None

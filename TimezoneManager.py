@@ -22,6 +22,7 @@ import urwid
 import subprocess
 import logging
 import typing
+import os
 from .loop import get_main_loop
 
 class TimezoneManager(urwid.WidgetWrap):
@@ -77,7 +78,12 @@ class TimezoneManager(urwid.WidgetWrap):
 			or an error message if unable to determine the timezone.
 		"""
 		try:
-			result = subprocess.run(['timedatectl', 'show', '--property=Timezone'], capture_output=True, text=True, check=True)
+			result = subprocess.run(
+				['timedatectl', 'show', '--property=Timezone'],
+				capture_output=True,
+				text=True,
+				check=True
+			)
 			timezone_name = result.stdout.strip().split('=')[-1]
 		except (subprocess.CalledProcessError, FileNotFoundError, OSError):
 			timezone_name = "Failed to Determine Timezone"
@@ -112,6 +118,7 @@ class TimezoneManager(urwid.WidgetWrap):
 		try:
 			main_loop = get_main_loop()
 			main_loop.screen.stop()
+			subprocess.run(['clear'], check=True)
 			tz_output = subprocess.check_output(['tzselect'])
 			selected_timezone = tz_output.splitlines()[-1].strip()
 			subprocess.check_call(['sudo', 'timedatectl', 'set-timezone', selected_timezone])

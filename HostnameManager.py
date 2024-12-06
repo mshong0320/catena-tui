@@ -54,8 +54,11 @@ class HostnameManager(urwid.WidgetWrap):
         """
         Initialize the widgets for the hostname manager.
         """
-        self.hostname_input = urwid.Edit("Enter new hostname:   ", edit_text="", multiline=False)
-        self.hostname_input.set_edit_text(self.current_hostname)
+        self.hostname_input = urwid.Edit(
+            "Enter new hostname:   ",
+            edit_text=self.current_hostname,
+            multiline=False
+        )
         self.hostname_input_padded = urwid.Pile([
             urwid.LineBox(
                 urwid.Padding(
@@ -86,7 +89,6 @@ class HostnameManager(urwid.WidgetWrap):
             self.response_widget_padded,
             self.submitWrapped
         ])
-
         # Additional elements only if initial_setup is None
         if not self.setup_wizard:
             self.pile.contents.append((self.backWrapped, ('pack', None)))
@@ -103,21 +105,22 @@ class HostnameManager(urwid.WidgetWrap):
         """
         logging.debug('Submit button clicked')
         new_hostname = self.hostname_input.get_edit_text().strip()
-
         # Clear any existing response message
         self.clear_response()
-
         if not new_hostname:
             self.display_response("Please provide a valid hostname.")
-            self.hostname_input.set_edit_text("")
             return
         if new_hostname == self.current_hostname:
             self.display_response("The submitted hostname is same as current. Submit different hostname.")
-            self.hostname_input.set_edit_text("")
             return
         try:
             # Attempt to set the new hostname
-            subprocess.run(f"sudo hostnamectl set-hostname {new_hostname}", shell=True, check=True)
+            subprocess.run(
+                f"sudo hostnamectl set-hostname {new_hostname}",
+                shell=True,
+                check=True,
+                stderr=subprocess.DEVNULL
+            )
             logger.info(f"Hostname changed to: {new_hostname}")
             # Update the current hostname and display it
             self.current_hostname = new_hostname
@@ -129,7 +132,6 @@ class HostnameManager(urwid.WidgetWrap):
             self.display_response(response_message)
         except subprocess.CalledProcessError as e:
             # Display error message
-            logger.error(f"Failed to set hostname: {e}")
             self.display_response(f"Failed to change hostname: {e}")
         # Clear the input field
         self.hostname_input.set_edit_text("")
